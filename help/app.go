@@ -11,16 +11,18 @@ import (
 
 // 消息函数类型
 type MsgFunc func(*ClientConn)
+type ConnRetFunc func(string, string, int, string) bool
 
 type AppBase struct {
 	baseGoNumStart int
 	baseGoNumEnd   int
-	Address        string              // 地址
-	Listener       *net.TCPListener    // 本地侦听端口
-	Conns          map[int]*ClientConn // 连接池
-	ConnLast       int                 // 最后连接Id
-	MsgProc        []MsgFunc           // 消息处理函数注册表
-	MsgProcCount   int                 // 消息函数数量
+	Address        string                 // 地址
+	Listener       map[string]*ListenConn // 本地侦听端口
+	RemoteSvr      map[string]*ClientConn // 远程服务连接
+	Conns          map[int]*ClientConn    // 连接池
+	ConnLast       int                    // 最后连接Id
+	MsgProc        []MsgFunc              // 消息处理函数注册表
+	MsgProcCount   int                    // 消息函数数量
 }
 
 // 程序控制核心
@@ -29,6 +31,8 @@ var app *AppBase
 func GetApp() *AppBase {
 	if app == nil {
 		app = &AppBase{}
+		app.Listener = make(map[string]*ListenConn, 10)
+		app.RemoteSvr = make(map[string]*ClientConn, 10)
 		app.Conns = make(map[int]*ClientConn, 1000)
 		app.MsgProc = make([]MsgFunc, 8000)
 	}
@@ -80,51 +84,93 @@ func (this *AppBase) AddConn(c *ClientConn) {
 }
 
 func (this *AppBase) DelConn(id int) {
-	delete(this.Conns, id)
+	if _, ok := this.Conns[id]; ok {
+		if len(this.Conns[id].Name) > 0 {
+			delete(this.RemoteSvr, this.Conns[id].Name)
+		}
+		delete(this.Conns, id)
+	}
 }
 
 func (this *AppBase) RegMsgFunc(id int, f MsgFunc) {
 	this.MsgProc[id] = f
 }
 
-func (this *AppBase) Listen(net_type, address string) {
+func (this *AppBase) Listen(name, net_type, address string, onRet ConnRetFunc) {
 	if len(this.Address) > 0 || len(address) == 0 || len(net_type) == 0 {
-		fmt.Println("listen failed")
+		onRet("listen failed", name, 0, "listen failed")
 		return
 	}
 
 	this.Address = address
 
 	// 打开本地TCP侦听
-	serverAddr, err := net.ResolveTCPAddr("tcp", this.Address)
+	serverAddr, err := net.ResolveTCPAddr(net_type, this.Address)
 
 	if err != nil {
-		// GetLog().Error("ScsKernel Start : port failed: '%s' %s", this.Address, err.Error())
+		onRet("listen failed", name, 0, "Listen Start : port failed: '"+this.Address+"' "+err.Error())
 		return
 	}
 
-	listener, err := net.ListenTCP("tcp", serverAddr)
+	listener, err := net.ListenTCP(net_type, serverAddr)
 	if err != nil {
-		// GetLog().Error("TcpSerer ListenTCP: %s", err.Error())
+		onRet("listen failed", name, 0, "TcpSerer ListenTCP: "+err.Error())
 		return
 	}
+
+	ln := new(ListenConn)
+	ln.InitListen(name, net_type, address, listener)
+	this.Listener[name] = ln
+
+	onRet("listen ok", name, 0, "")
 
 	for {
-		this.Listener = listener
 		conn, err := listener.AcceptTCP()
 		if err != nil {
-			// handle error
+			if !onRet("accept failed", name, 0, "TcpSerer Accept: "+err.Error()) {
+				break
+			}
 			continue
 		}
 		c := new(ClientConn)
 		this.ConnLast++
 		c.InitClient(this.ConnLast, conn)
+		onRet("accept ok", "", c.Id, "")
 
-		go this.ConnProc(c)
+		go this.ConnProc(c, onRet)
 	}
 }
 
-func (this *AppBase) ConnProc(c *ClientConn) {
+func (this *AppBase) Connect(name, net_type, address string, onRet ConnRetFunc) {
+	if len(address) == 0 || len(net_type) == 0 || len(name) == 0 {
+		onRet("connect failed", name, 0, "listen failed")
+		return
+	}
+
+	// 打开本地TCP侦听
+	remoteAddr, err := net.ResolveTCPAddr(net_type, address)
+
+	if err != nil {
+		onRet("connect failed", name, 0, "Connect Start : port failed: '"+this.Address+"' "+err.Error())
+		return
+	}
+
+	conn, err := net.DialTCP(net_type, nil, remoteAddr)
+	if err != nil {
+		onRet("connect failed", name, 0, "Connect dialtcp failed: '"+this.Address+"' "+err.Error())
+	} else {
+		c := new(ClientConn)
+		this.ConnLast++
+		c.InitClient(this.ConnLast, conn)
+		c.Name = name
+		this.RemoteSvr[name] = c
+
+		onRet("connect ok", name, 0, "")
+		go this.ConnProc(c, onRet)
+	}
+}
+
+func (this *AppBase) ConnProc(c *ClientConn, onRet ConnRetFunc) {
 
 	for {
 		c.Stream.Seek(0)
@@ -140,15 +186,18 @@ func (this *AppBase) ConnProc(c *ClientConn) {
 			}
 
 		} else {
-			fmt.Println(err.Error())
+			onRet("read failed", c.Name, c.Id, err.Error())
 			break
 		}
 	}
 
+	onRet("pre close", c.Name, c.Id, "")
+
 	err := c.Conn.Close()
-	fmt.Println("Closed connection:", c.Address)
 	if err != nil {
-		fmt.Println("ERROR: " + "Close:" + " " + err.Error())
+		onRet("close failed", c.Name, c.Id, err.Error())
+	} else {
+		onRet("close ok", c.Name, c.Id, err.Error())
 	}
 
 	GetApp().DelConn(c.Id)
