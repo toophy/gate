@@ -2,12 +2,8 @@
 package main
 
 import (
-	"fmt"
-	"github.com/toophy/pangu/help"
-	"github.com/toophy/pangu/thread"
-	"os"
-	"runtime"
-	"runtime/pprof"
+	"github.com/toophy/gate/config"
+	"github.com/toophy/gate/help"
 )
 
 // Gogame framework version.
@@ -16,23 +12,28 @@ const (
 )
 
 func main() {
-
-	runtime.GOMAXPROCS(1)
-
-	// 检查log目录
-	if !help.IsExist(thread.LogDir) {
-		os.MkdirAll(thread.LogDir, os.ModeDir)
-	}
-
-	// 创建pprof文件
-	f, err := os.Create(thread.LogDir + "/" + thread.ProfFile)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
+	help.GetApp().Start(config.LogDir, config.ProfFile)
 
 	// 主协程
+	go main_go()
 
 	// 等待结束
+	help.GetApp().WaitExit()
+}
+
+func main_go() {
+	RegMsgProc()
+
+	go help.GetApp().Listen("tcp", ":8001")
+}
+
+func RegMsgProc() {
+	help.GetApp().RegMsgFunc(1, on_c2g_login)
+}
+
+func on_c2g_login(c *help.ClientConn) {
+	if c.Id > 0 {
+		name := c.Stream.ReadStr()
+		println(name)
+	}
 }
