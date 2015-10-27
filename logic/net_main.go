@@ -23,7 +23,11 @@ func OnListenRet(typ string, name string, id int, info string) bool {
 		return false
 
 	case "accept ok":
-		println(info)
+		if len(name) > 0 {
+			println(name + " : Accept ok")
+		} else {
+			println("Conn[", id, "] : Accept ok")
+		}
 
 	case "connect failed":
 		if len(name) > 0 {

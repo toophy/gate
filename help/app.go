@@ -92,8 +92,26 @@ func (this *AppBase) DelConn(id int) {
 	}
 }
 
+func (this *AppBase) GetConnById(id int) *ClientConn {
+	if v, ok := this.Conns[id]; ok {
+		return v
+	}
+	return nil
+}
+
+func (this *AppBase) GetConnByName(name string) *ClientConn {
+	if v, ok := this.RemoteSvr[name]; ok {
+		return v
+	}
+	return nil
+}
+
 func (this *AppBase) RegMsgFunc(id int, f MsgFunc) {
 	this.MsgProc[id] = f
+
+	if id > this.MsgProcCount {
+		this.MsgProcCount = id
+	}
 }
 
 func (this *AppBase) Listen(name, net_type, address string, onRet ConnRetFunc) {
@@ -135,6 +153,7 @@ func (this *AppBase) Listen(name, net_type, address string, onRet ConnRetFunc) {
 		c := new(ClientConn)
 		this.ConnLast++
 		c.InitClient(this.ConnLast, conn)
+		this.AddConn(c)
 		onRet("accept ok", "", c.Id, "")
 
 		go this.ConnProc(c, onRet)
@@ -164,8 +183,9 @@ func (this *AppBase) Connect(name, net_type, address string, onRet ConnRetFunc) 
 		c.InitClient(this.ConnLast, conn)
 		c.Name = name
 		this.RemoteSvr[name] = c
+		this.AddConn(c)
 
-		onRet("connect ok", name, 0, "")
+		onRet("connect ok", name, c.Id, "")
 		go this.ConnProc(c, onRet)
 	}
 }
@@ -181,7 +201,7 @@ func (this *AppBase) ConnProc(c *ClientConn, onRet ConnRetFunc) {
 			c.Stream.Seek(MaxHeader)
 			msg_code := c.Stream.ReadU2()
 
-			if msg_code >= 0 && msg_code < this.MsgProcCount {
+			if msg_code >= 0 && msg_code <= this.MsgProcCount {
 				this.MsgProc[msg_code](c)
 			}
 
@@ -197,7 +217,7 @@ func (this *AppBase) ConnProc(c *ClientConn, onRet ConnRetFunc) {
 	if err != nil {
 		onRet("close failed", c.Name, c.Id, err.Error())
 	} else {
-		onRet("close ok", c.Name, c.Id, err.Error())
+		onRet("close ok", c.Name, c.Id, "")
 	}
 
 	GetApp().DelConn(c.Id)
