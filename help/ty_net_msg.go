@@ -33,7 +33,7 @@ func (t *Ty_net_msg) ReadData(conn *net.TCPConn) error {
 	t.Len = 0
 	length, err := io.ReadFull(conn, t.Data[:2])
 	if length != MaxHeader {
-		// GetLog().Trace("Packet header : %d != %d", length, MaxHeader)
+		GetApp().LogWarn("Packet header : %d != %d", length, MaxHeader)
 		return err
 	}
 	if err != nil {
@@ -55,7 +55,7 @@ func (t *Ty_net_msg) ReadBody(conn *net.TCPConn) error {
 
 	length, err := io.ReadFull(conn, t.Data[2:t.Len])
 	if length != (t.Len - 2) {
-		// GetLog().Trace("Packet length : %d != %d ", length, t.Len-2)
+		GetApp().LogWarn("Packet length : %d != %d ", length, t.Len-2)
 		return err
 	}
 	if err != nil {
@@ -74,7 +74,7 @@ func (t *Ty_net_msg) Send(conn *net.TCPConn) error {
 
 		_, err := conn.Write(t.Data[:MaxHeader+t.Len])
 		if err != nil {
-			// GetLog().Trace(err.Error())
+			GetApp().LogWarn(err.Error())
 			return err
 		}
 	}

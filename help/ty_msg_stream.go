@@ -1,8 +1,6 @@
 package help
 
-import (
-	"fmt"
-)
+import ()
 
 // 网络消息体读写
 type Ty_msg_stream struct {
@@ -16,7 +14,7 @@ func (t *Ty_msg_stream) InitMsgStream(msg *Ty_net_msg) {
 }
 
 func (t *Ty_msg_stream) PrintData() {
-	fmt.Println(t.msg.Data[:t.msg.Len+2])
+	GetApp().LogWarn(string(t.msg.Data[:t.msg.Len+2]))
 }
 
 func (t *Ty_msg_stream) Seek(pos int) {

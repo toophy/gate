@@ -2,7 +2,6 @@
 package main
 
 import (
-	"github.com/toophy/gate/config"
 	"github.com/toophy/gate/help"
 	"github.com/toophy/gate/logic"
 )
@@ -13,7 +12,7 @@ const (
 )
 
 func main() {
-	help.GetApp().Start(config.LogDir, config.ProfFile)
+	help.GetApp().Start()
 
 	// 主协程
 	go logic.Main_go()

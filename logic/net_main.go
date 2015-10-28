@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"fmt"
 	"github.com/toophy/gate/help"
 )
 
@@ -11,65 +12,42 @@ func Main_go() {
 }
 
 func OnListenRet(typ string, name string, id int, info string) bool {
+	name_fix := name
+	if len(name_fix) == 0 {
+		name_fix = fmt.Sprintf("Conn[%d]", id)
+	}
+
 	switch typ {
 	case "listen failed":
-		println(name + " : Listen failed[" + info)
+		help.GetApp().LogFatal("%s : Listen failed[%s]", name_fix, info)
 
 	case "listen ok":
-		println(name + " : Listen ok.")
+		help.GetApp().LogInfo("%s : Listen ok.", name_fix)
 
 	case "accept failed":
-		println(info)
+		help.GetApp().LogFatal(info)
 		return false
 
 	case "accept ok":
-		if len(name) > 0 {
-			println(name + " : Accept ok")
-		} else {
-			println("Conn[", id, "] : Accept ok")
-		}
+		help.GetApp().LogDebug("%s : Accept ok", name_fix)
 
 	case "connect failed":
-		if len(name) > 0 {
-			println(name + " : Connect failed[" + info)
-		} else {
-			println("Conn[", id, "] : Connect failed["+info)
-		}
+		help.GetApp().LogError("%s : Connect failed[%s]", name_fix, info)
 
 	case "connect ok":
-		if len(name) > 0 {
-			println(name + " : Connect ok")
-		} else {
-			println("Conn[", id, "] : Connect ok")
-		}
+		help.GetApp().LogDebug("%s : Connect ok", name_fix)
 
 	case "read failed":
-		if len(name) > 0 {
-			println(name + " : Connect read[" + info)
-		} else {
-			println("Conn[", id, "] : Connect read["+info)
-		}
+		help.GetApp().LogError("%s : Connect read[%s]", name_fix, info)
 
 	case "pre close":
-		if len(name) > 0 {
-			println(name + " : Connect pre close")
-		} else {
-			println("Conn[", id, "] : Connect pre close")
-		}
+		help.GetApp().LogDebug("%s : Connect pre close", name_fix)
 
 	case "close failed":
-		if len(name) > 0 {
-			println(name + " : Connect close failed[" + info)
-		} else {
-			println("Conn[", id, "] : Connect close failed["+info)
-		}
+		help.GetApp().LogError("%s : Connect close failed[%s]", name_fix, info)
 
 	case "close ok":
-		if len(name) > 0 {
-			println(name + " : Connect close ok.")
-		} else {
-			println("Conn[", id, "] : Connect close ok.")
-		}
+		help.GetApp().LogDebug("%s : Connect close ok.", name_fix)
 	}
 
 	return true
