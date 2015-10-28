@@ -55,8 +55,7 @@ type Evt_eat struct {
 	FoodName string
 }
 
-func (this *Evt_eat) Exec(home interface{}) bool {
-	home.(*EvtPool).Eat(this.FoodName)
+func (this *Evt_eat) Exec() bool {
 	return true
 }
 

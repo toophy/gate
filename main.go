@@ -2,8 +2,7 @@
 package main
 
 import (
-	"github.com/toophy/gate/help"
-	"github.com/toophy/gate/logic"
+	"github.com/toophy/gate/app"
 )
 
 // Gogame framework version.
@@ -12,11 +11,11 @@ const (
 )
 
 func main() {
-	help.GetApp().Start()
+	app.GetApp().Start(100, app.Evt_lay1_time)
 
 	// 主协程
-	go logic.Main_go()
+	go app.Main_go()
 
 	// 等待结束
-	help.GetApp().WaitExit()
+	app.GetApp().WaitExit()
 }

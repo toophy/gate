@@ -7,7 +7,7 @@ import (
 type IEvent interface {
 	Init(name string, t uint64)      // 初始化(name可以为空, t是触发时间)
 	GetName() string                 // 获取别名
-	Exec(home interface{}) bool      // 执行事件
+	Exec() bool                      // 执行事件
 	AddNode(n *DListNode) bool       // 增加节点
 	Destroy()                        // 摧毁事件
 	Pop()                            // 弹出事件
