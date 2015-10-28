@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"github.com/toophy/gate/help"
+	lua "github.com/toophy/gopher-lua"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -45,6 +46,9 @@ type AppBase struct {
 	node_pool           []help.DListNode           // 节点池
 	node_free           help.DListNode             // 自由节点
 	node_alloc_count    int                        // 节点分配数量
+	luaState            *lua.LState                // Lua实体
+	luaNilTable         lua.LTable                 // Lua空的Table, 供默认参数使用
+
 }
 
 // 程序控制核心
@@ -99,12 +103,13 @@ func (this *AppBase) init() {
 }
 
 // 程序开启
-func (this *AppBase) Start(heart_time int64, lay1_time uint64) {
+func (this *AppBase) Start(heart_time int64, lay1_time uint64) bool {
 
 	// 创建pprof文件
 	f, err := os.Create(LogDir + "/" + ProfFile)
 	if err != nil {
 		this.LogWarn(err.Error())
+		return false
 	}
 	pprof.StartCPUProfile(f)
 
@@ -140,6 +145,13 @@ func (this *AppBase) Start(heart_time int64, lay1_time uint64) {
 	for i := 0; i < 200000; i++ {
 		this.node_pool[i].Init(nil)
 		this.addFreeDlinkNode(&this.node_pool[i])
+	}
+
+	// 载入Lua脚本
+	errInit := this.reloadLuaState()
+	if errInit != nil {
+		this.LogError(errInit.Error())
+		return false
 	}
 
 	// 刷新日志到硬盘
@@ -187,6 +199,10 @@ func (this *AppBase) Start(heart_time int64, lay1_time uint64) {
 			}
 		}
 	}()
+
+	this.Tolua_Common("main", "OnAppBegin")
+
+	return true
 }
 
 // 等待协程结束
@@ -199,6 +215,13 @@ func (this *AppBase) WaitExit() {
 			this.LogInfo("bye bye.")
 			break
 		}
+	}
+
+	// 响应线程退出
+	this.Tolua_Common("main", "OnAppEnd")
+	if this.luaState != nil {
+		this.luaState.Close()
+		this.luaState = nil
 	}
 
 	// 关闭日志文件

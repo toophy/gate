@@ -1,3 +1,0 @@
-编号	场景名称	Lua模块名	宽	高
-1	卧龙山庄	woLongShanZhuang	200	100
-2	卧龙坡	woLongPo	10	50
