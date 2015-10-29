@@ -11,7 +11,7 @@ const (
 )
 
 func main() {
-	if app.GetApp().Start(100, app.Evt_lay1_time) {
+	if app.GetApp().Start(100) {
 		// 主协程
 		go app.Main_go()
 		// 等待结束

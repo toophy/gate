@@ -103,7 +103,7 @@ func (this *AppBase) init() {
 }
 
 // 程序开启
-func (this *AppBase) Start(heart_time int64, lay1_time uint64) bool {
+func (this *AppBase) Start(heart_time int64) bool {
 
 	// 创建pprof文件
 	f, err := os.Create(LogDir + "/" + ProfFile)
@@ -125,7 +125,7 @@ func (this *AppBase) Start(heart_time int64, lay1_time uint64) bool {
 	this.first_run = true
 
 	// 初始化事件池
-	this.evt_lay1Size = lay1_time >> Evt_gap_bit
+	this.evt_lay1Size = Evt_lay1_time >> Evt_gap_bit
 	this.evt_lay1Cursor = 0
 	this.evt_currRunCount = 1
 	this.evt_lastRunCount = this.evt_currRunCount
